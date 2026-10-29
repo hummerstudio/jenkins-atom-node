@@ -1,0 +1,56 @@
+{
+  "atomCode": "node",
+  "name": "Node.js",
+  "version": "1.0.0",
+  "description": "Puts a Node installation on PATH for the following steps and optionally runs one command.",
+  "execution": {
+    "packagePath": "node.jar",
+    "language": "java",
+    "target": "$atom_java_path -cp node.jar com.jenkinschina.atom.sdk.AtomRunner"
+  },
+  "input": {
+    "nodeHome": {
+      "label": "Node 安装目录（留空从 PATH 找）",
+      "type": "vuex-input",
+      "default": ""
+    },
+    "command": {
+      "label": "要执行的命令（留空只准备环境）",
+      "type": "textarea",
+      "default": ""
+    },
+    "prependPath": {
+      "label": "把 node 目录加到 PATH 前面",
+      "type": "checkbox",
+      "default": "true"
+    }
+  },
+  "output": {
+    "NODE_HOME": {
+      "type": "string",
+      "description": "Node 安装目录"
+    },
+    "NODE_VERSION": {
+      "type": "string",
+      "description": "node 版本"
+    },
+    "nodeVersion": {
+      "type": "string",
+      "description": "node 版本（小写别名）"
+    },
+    "npmVersion": {
+      "type": "string",
+      "description": "npm 版本"
+    },
+    "PATH": {
+      "type": "string",
+      "description": "拼好的 PATH"
+    }
+  },
+  "x-jenkins": {
+    "protocol": "jenkins-1",
+    "requires": {
+      "runner": ">=0.4.0"
+    }
+  }
+}
