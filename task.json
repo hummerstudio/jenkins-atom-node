@@ -1,7 +1,7 @@
 {
   "atomCode": "node",
   "name": "Node.js",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Puts a Node installation on PATH for the following steps and optionally runs one command.",
   "execution": {
     "packagePath": "node.jar",

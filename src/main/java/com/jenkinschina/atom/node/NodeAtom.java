@@ -29,9 +29,9 @@ public class NodeAtom implements AtomTask {
             home = orEmpty(context.getParam("NODE_HOME"));
         }
 
-        Path bin = resolveBin(home);
+        Path bin = resolveBin(home, workspace);
         if (bin == null) {
-            return AtomResult.error(ErrorType.USER, 40001, home.isBlank()
+            return AtomResult.error(ErrorType.ENVIRONMENT, 40001, home.isBlank()
                     ? "node was not found on PATH; set nodeHome to the installation directory"
                     : "no node binary under " + home + " (looked in bin/)");
         }
@@ -42,7 +42,7 @@ public class NodeAtom implements AtomTask {
         String nodeBinary = bin.resolve("node").toString();
         String version = firstLine(exec(workspace, nodeDir, nodeBinary, "--version"));
         if (version.isBlank()) {
-            return AtomResult.error(ErrorType.USER, 40002, "node --version produced nothing from " + nodeBinary);
+            return AtomResult.error(ErrorType.ENVIRONMENT, 40002, "node --version produced nothing from " + nodeBinary);
         }
         java.nio.file.Path npmBinary = bin.resolve("npm");
         String npm = java.nio.file.Files.isExecutable(npmBinary)
@@ -67,7 +67,12 @@ public class NodeAtom implements AtomTask {
                 .data("nodeVersion", version)
                 .data("npmVersion", npm);
         if (context.getBooleanParam("prependPath", true)) {
+            // input.json carries the build env, but Pipeline does not always get PATH into that map; the process
+            // itself was started with the agent's environment, so that is the reliable fallback
             String path = orEmpty(context.getParam("PATH"));
+            if (path.isBlank()) {
+                path = orEmpty(System.getenv("PATH"));
+            }
             String prefix = nodeDir;
             if (path.isBlank()) {
                 result.data("PATH", prefix);
@@ -79,9 +84,10 @@ public class NodeAtom implements AtomTask {
     }
 
     /** Accept both a node home and a bin directory; return the directory that holds the binary. */
-    private static Path resolveBin(String home) {
+    private static Path resolveBin(String home, Path workspace) {
         if (!home.isBlank()) {
-            Path candidate = Path.of(home);
+            // "tools/node" means inside the workspace: the process is not started in the workspace
+            Path candidate = Path.of(home).isAbsolute() ? Path.of(home) : workspace.resolve(home);
             if (Files.isExecutable(candidate.resolve("node"))) {
                 return candidate.toAbsolutePath();
             }
