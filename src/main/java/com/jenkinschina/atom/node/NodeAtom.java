@@ -40,28 +40,37 @@ public class NodeAtom implements AtomTask {
         // absolute paths, not a PATH lookup: the JDK resolves the program against the *parent* environment on macOS,
         // which silently picks up a different node than the one this atom was told to use
         String nodeBinary = bin.resolve("node").toString();
-        String version = firstLine(exec(workspace, nodeDir, nodeBinary, "--version"));
+        String version = firstLine(exec(workspace, nodeDir, nodeBinary, "--version").output());
         if (version.isBlank()) {
             return AtomResult.error(ErrorType.ENVIRONMENT, 40002, "node --version produced nothing from " + nodeBinary);
         }
         java.nio.file.Path npmBinary = bin.resolve("npm");
         String npm = java.nio.file.Files.isExecutable(npmBinary)
-                ? firstLine(exec(workspace, nodeDir, npmBinary.toString(), "--version"))
+                ? firstLine(exec(workspace, nodeDir, npmBinary.toString(), "--version").output())
                 : "";
         context.log("[node] " + version + " (npm " + (npm.isBlank() ? "absent" : npm) + ") from " + nodeDir);
 
         String command = context.getParam("command", "");
+        boolean failOnCommandError = context.getBooleanParam("failOnCommandError", true);
+        int commandExit = 0;
         if (!command.isBlank()) {
             context.log("[node] $ " + command);
-            String output = exec(workspace, nodeDir, "/bin/sh", "-c", command);
-            if (!output.isBlank()) {
-                for (String line : output.split("\n")) {
+            Result ran = exec(workspace, nodeDir, "/bin/sh", "-c", command);
+            for (String line : ran.output().split("\n")) {
+                if (!line.isEmpty()) {
                     context.log("[node] " + line);
                 }
+            }
+            commandExit = ran.code();
+            if (commandExit != 0 && failOnCommandError) {
+                // a failed npm test must fail the step: silence here is how a broken build looks green
+                return AtomResult.error(ErrorType.USER, 40003,
+                        "the command exited " + commandExit + ": " + command);
             }
         }
 
         AtomResult result = AtomResult.success()
+                .data("exitCode", String.valueOf(commandExit))
                 .data("NODE_HOME", home.isBlank() ? nodeDir : Path.of(home).toAbsolutePath().toString())
                 .data("NODE_VERSION", version)
                 .data("nodeVersion", version)
@@ -112,7 +121,7 @@ public class NodeAtom implements AtomTask {
         return null;
     }
 
-    private static String exec(Path workspace, String nodeDir, String... command) {
+    private static Result exec(Path workspace, String nodeDir, String... command) {
         try {
             List<String> argv = new ArrayList<>(List.of(command));
             ProcessBuilder builder = new ProcessBuilder(argv).directory(workspace.toFile()).redirectErrorStream(true);
@@ -128,12 +137,14 @@ public class NodeAtom implements AtomTask {
                     out.append(line).append('\n');
                 }
             }
-            process.waitFor();
-            return out.toString().strip();
+            int code = process.waitFor();
+            return new Result(code, out.toString().strip());
         } catch (Exception e) {
-            return "";
+            return new Result(-1, String.valueOf(e));
         }
     }
+
+    private record Result(int code, String output) {}
 
     private static String firstLine(String text) {
         if (text == null || text.isBlank()) {

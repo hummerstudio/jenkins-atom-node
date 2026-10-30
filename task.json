@@ -1,7 +1,7 @@
 {
   "atomCode": "node",
   "name": "Node.js",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Puts a Node installation on PATH for the following steps and optionally runs one command.",
   "execution": {
     "packagePath": "node.jar",
@@ -21,6 +21,11 @@
     },
     "prependPath": {
       "label": "把 node 目录加到 PATH 前面",
+      "type": "checkbox",
+      "default": "true"
+    },
+    "failOnCommandError": {
+      "label": "命令失败就让这一步失败",
       "type": "checkbox",
       "default": "true"
     }
@@ -45,6 +50,10 @@
     "PATH": {
       "type": "string",
       "description": "拼好的 PATH"
+    },
+    "exitCode": {
+      "type": "string",
+      "description": "命令的退出码"
     }
   },
   "x-jenkins": {

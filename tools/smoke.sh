@@ -47,4 +47,16 @@ printf '{"nodeHome": "%s/node"}' "$work/nonexistent" >"$dir/input.json"
 run "$dir" >/dev/null 2>&1 && fail "a missing node must fail"
 grep -q "no node binary" "$dir/output.json" || fail "message not readable: $(cat "$dir/output.json")"
 
-echo "smoke ok: NODE_VERSION/npm/PATH outputs, bin dir, missing node"
+# a failing command must fail the atom, not pass silently
+dir="$work/failing"; mkdir -p "$dir"
+printf '{"nodeHome": "%s", "command": "echo boom; exit 3"}' "$work/node" >"$dir/input.json"
+run "$dir" >/dev/null 2>&1 && fail "a command exiting 3 must fail the atom"
+grep -q "exited 3" "$dir/output.json" || fail "message: $(cat "$dir/output.json")"
+
+# unless the caller says otherwise
+dir="$work/tolerant"; mkdir -p "$dir"
+printf '{"nodeHome": "%s", "command": "exit 3", "failOnCommandError": "false"}' "$work/node" >"$dir/input.json"
+run "$dir" >/dev/null 2>&1 || fail "failOnCommandError=false must not fail"
+grep -q '"exitCode":{"type":"string","value":"3"}' "$dir/output.json" || fail "exit code output"
+
+echo "smoke ok: NODE_VERSION/npm/PATH outputs, bin dir, missing node, failing command"
