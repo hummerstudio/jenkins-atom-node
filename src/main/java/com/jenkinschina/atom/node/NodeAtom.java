@@ -140,6 +140,9 @@ public class NodeAtom implements AtomTask {
             int code = process.waitFor();
             return new Result(code, out.toString().strip());
         } catch (Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             return new Result(-1, String.valueOf(e));
         }
     }
